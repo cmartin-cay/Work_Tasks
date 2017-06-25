@@ -1,17 +1,19 @@
 import pandas as pd
-from datetime import datetime, date
-from pprint import pprint
-from collections import defaultdict
-
-ME_DATE = date(2017, 6, 30)
+from datetime import date
+from tkinter.filedialog import askopenfilename
+ME_DATE = date(2017, 5, 31)
 
 # Read the data and convert Ex-Date to a date format, then add a new Column
-divs = pd.read_csv('Citco Divs.csv', usecols=[0, 1, 2, 3, 4, 9, 11, 19], parse_dates=[6])
+divs = pd.read_excel(askopenfilename(title="Open the Dividends File"),
+                   usecols=[0, 1, 2, 3, 4, 9, 11, 19],
+                   parse_dates=[6])
 divs['New_Quantity'] = divs['Position']
 div_ident = set(divs["SEDOL"].tolist())
 
 # Import Trades and adjust for Dates
-trades = pd.read_csv('MSCO.csv', usecols=[13, 16, 20, 21, 22, 23, 26, 43], parse_dates=[3, 4, 5])
+trades = pd.read_csv(askopenfilename(title="Open the MSCO trade file"),
+                     usecols=[13, 16, 20, 21, 22, 23, 26, 43],
+                     parse_dates=[3, 4, 5])
 
 # Filter the trade list to only have trades which currently have accrued dividends
 trades = trades[trades["Quantity"] != 0]
@@ -33,9 +35,8 @@ def pay_div(trade, div, temp_cash):
     (2) The trade start date (origination date) must be before the dividend date
     (3) The dividend date must be before the trade ending date i.e. no dividend if it didn't exist yet
     """
-    if trade["SEDOL"] == div["SEDOL"] and trade["Start Date"] <= div["Ex Date"] and div["Ex Date"] <= trade["End Date"]:
+    if trade["SEDOL"] == div["SEDOL"] and trade["Start Date"] < div["Ex Date"] and div["Ex Date"] <= trade["End Date"]:
         # Increase the amount of cash as the trade hits each relevant dividend
-        # div["New_Quantity"] -= trade['Quantity']
         try:
             reduce_div(trade, div)
         except ValueError:
@@ -77,7 +78,7 @@ if __name__ == '__main__':
     writer = pd.ExcelWriter('output.xlsx')
     cf.to_excel(writer, 'Sheet1', index=False)
     d = pd.DataFrame(divs_dictionary)
-    print(d.dtypes)
+    # print(d.dtypes)
     d = d[["Fund", "Tid", "Security", "Position", "Amount", "Div Ccy", "Ex Date", "SEDOL", "New_Quantity"]]
     d.sort_values(["Security", "Ex Date"], ascending=[True, True], inplace=True)
     d.to_excel(writer, "End Divs", index=False)
@@ -85,8 +86,9 @@ if __name__ == '__main__':
 
     # TODO Error checking for when Div Quantity changes sign - Done
     # TODO Don't allow divs to hit when New Quantity is zero - Done
-    # TODO Don't allow trades dated(settling?) before Ex-Date to make a dividend - Done but needs test data
+    # TODO Don't allow trades dated(settling?) before Ex-Date to make a dividend - Done
     # TODO Cashflow output needs to be per Value Date, not per Trade - Done
     # TODO Function to verify if a trade genuinely hits a dividend - Done
-    # TODO Cashflow with more details
+    # TODO Completely empty cashflow gives KeyError - unlikely to be a serious problem
+    # TODO Cashflow and output with more details
     # TODO Outputs

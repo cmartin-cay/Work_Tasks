@@ -2,18 +2,17 @@ import pandas as pd
 import numpy as np
 from datetime import date
 from tkinter.filedialog import askopenfilename
-DEV = True
+DEV = False
 if DEV:
     div_file, trade_file = ("Citco Divs.xlsx", 'MSCO.csv')
 else:
-    div_file, trade_file = (askopenfilename(title="Open the Dividends File"),
+    div_file, trade_file = (askopenfilename(title="Open the Citco Dividends File"),
                            askopenfilename(title="Open the MSCO trade file"))
-ME_DATE = date(2017, 5, 31)
+ME_DATE = date(2017, 9, 30)
 
 # Read the data and convert Ex-Date to a date format, then add a new Column
 divs = pd.read_excel(div_file,
-                   usecols=[0, 1, 2, 3, 4, 9, 11, 19],
-                   parse_dates=[6])
+                   usecols=[0, 1, 2, 3, 4, 9, 11, 19])
 divs['New_Quantity'] = divs['Position']
 div_ident = set(divs["SEDOL"].tolist())
 
@@ -48,6 +47,7 @@ def pay_div(trade, div, temp_cash):
             reduce_div(trade, div)
         except ValueError:
             error_log.append(trade)
+            print(error_log)
         else:
             temp_cash.append(trade['Quantity'] * -div['Amount'])
 
@@ -84,12 +84,12 @@ if __name__ == '__main__':
     cf[0] = cf[0] + " Swap div"
     cf1 = cf.copy()
     cf1[4] *= -1
-    cf1['Account'] = np.where(cf1[4]>0, 40000, 50000)
+    cf1['Account'] = np.where(cf1[4]>0, 50502, 42003)
     cf3 = cf.append(cf1, ignore_index=True)
     # print(cf3)
     cf3.columns = ['Fund', 'Description', 'Date', 'CCY', 'Amount', 'Anum']
     writer = pd.ExcelWriter('output.xlsx')
-    cf3.to_excel(writer, 'Sheet1', index=False)
+    cf3.to_excel(writer, 'Loader', index=False)
     d = pd.DataFrame(divs_dictionary)
     # print(d.dtypes)
     d = d[["Fund", "Tid", "Security", "Position", "Amount", "Div Ccy", "Ex Date", "SEDOL", "New_Quantity"]]

@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import date
 from tkinter.filedialog import askopenfilename
+from tkinter import Tk
 DEV = False
 if DEV:
     div_file, trade_file = ("Citco Divs.xlsx", 'MSCO.csv')
@@ -9,28 +10,31 @@ else:
     div_file, trade_file = (askopenfilename(title="Open the Citco Dividends File"),
                            askopenfilename(title="Open the MSCO trade file"))
 ME_DATE = date(2017, 9, 30)
-
-# Read the data and convert Ex-Date to a date format, then add a new Column
-divs = pd.read_excel(div_file,
-                   usecols=[0, 1, 2, 3, 4, 9, 11, 19])
-divs['New_Quantity'] = divs['Position']
-div_ident = set(divs["SEDOL"].tolist())
-
-# Import Trades and adjust for Dates
-trades = pd.read_csv(trade_file,
-                     usecols=[13, 16, 20, 21, 22, 23, 26, 43],
-                     parse_dates=[3, 4, 5])
-
-# Filter the trade list to only have trades which currently have accrued dividends
-trades = trades[trades["Quantity"] != 0]
-trades = trades[trades['Value Date'] <= ME_DATE]
-trades = trades[(trades["SEDOL"].isin(div_ident))]
-
-divs_dictionary = list(divs.T.to_dict().values())
-trades_dictionary = trades.T.to_dict().values()
-
 cashflow = []
 error_log = []
+
+
+def make_dicts():
+    # Read the data and convert Ex-Date to a date format, then add a new Column
+    divs = pd.read_excel(div_file,
+                         usecols=[0, 1, 2, 3, 4, 9, 11, 19])
+    divs['New_Quantity'] = divs['Position']
+    div_ident = set(divs["SEDOL"].tolist())
+
+    # Import Trades and adjust for Dates
+    trades = pd.read_csv(trade_file,
+                         usecols=[13, 16, 20, 21, 22, 23, 26, 43],
+                         parse_dates=[3, 4, 5])
+
+    # Filter the trade list to only have trades which currently have accrued dividends
+    trades = trades[trades["Quantity"] != 0]
+    trades = trades[trades['Value Date'] <= ME_DATE]
+    trades = trades[(trades["SEDOL"].isin(div_ident))]
+
+    divs_dictionary = list(divs.T.to_dict().values())
+    trades_dictionary = trades.T.to_dict().values()
+    return trades_dictionary, divs_dictionary
+
 
 
 def pay_div(trade, div, temp_cash):
@@ -57,7 +61,7 @@ def reduce_div(trade, div):
     # We shouldn't ever change quantity from neg to pos or pos to neg
     # Raising the value error allows us to put it in a try block and use
     # basic logging to identify errors
-    if trade['Quantity'] > div['New_Quantity']:
+    if abs(trade['Quantity']) > abs(div['New_Quantity']):
         raise ValueError("A trade tried to make a dividend negative")
     else:
         div['New_Quantity'] += int(trade['Quantity'])
@@ -74,34 +78,43 @@ def run_divs(trades, divs):
         if temp_cash:
             cashflow.append([trade['Stock description'], trade['Value Date'], trade['Swap Settlement Currency'], div['Fund'], sum(temp_cash)])
 
-
-if __name__ == '__main__':
+def main():
+    trades_dictionary, divs_dictionary = make_dicts()
     run_divs(trades_dictionary, divs_dictionary)
-    cf = pd.DataFrame(cashflow)
-    # print(cf)
-    cf = cf.groupby([3, 0, 1, 2])[4].sum().reset_index()
-    cf["Account"] = 11504
-    cf[0] = cf[0] + " Swap div"
-    cf1 = cf.copy()
-    cf1[4] *= -1
-    cf1['Account'] = np.where(cf1[4]>0, 50502, 42003)
-    cf3 = cf.append(cf1, ignore_index=True)
-    # print(cf3)
-    cf3.columns = ['Fund', 'Description', 'Date', 'CCY', 'Amount', 'Anum']
+    cash_entries = pd.DataFrame(cashflow)
+    # Perform some Pandas grouping magic to get the correct layout
+    cash_entries = cash_entries.groupby([3, 0, 1, 2])[4].sum().reset_index()
+    cash_entries["Account"] = 11504
+    cash_entries[0] = cash_entries[0] + " Swap div"
+
+    # Create the accruals side - reverse the cash direction and choose the correct anum
+    accrual_entries = cash_entries.copy()
+    accrual_entries[4] *= -1
+    accrual_entries['Account'] = np.where(accrual_entries[4]>0, 50502, 42003)
+
+    # Combine the cash and accrual entries to make a valid debit and credit list
+    system_entries = cash_entries.append(accrual_entries, ignore_index=True)
+    system_entries.columns = ['Fund', 'Description', 'Date', 'CCY', 'Amount', 'Anum']
+
+    # Create a new dataframe showing the changes to the accrued dividends
+    remaining_divs = pd.DataFrame(divs_dictionary)
+    remaining_divs = remaining_divs[["Fund", "Tid", "Security", "Position", "Amount", "Div Ccy", "Ex Date", "SEDOL", "New_Quantity"]]
+    remaining_divs.sort_values(["Security", "Ex Date"], ascending=[True, True], inplace=True)
+
+    # Write the accounting entries and the news dividends to an Excel file
     writer = pd.ExcelWriter('output.xlsx')
-    cf3.to_excel(writer, 'Loader', index=False)
-    d = pd.DataFrame(divs_dictionary)
-    # print(d.dtypes)
-    d = d[["Fund", "Tid", "Security", "Position", "Amount", "Div Ccy", "Ex Date", "SEDOL", "New_Quantity"]]
-    d.sort_values(["Security", "Ex Date"], ascending=[True, True], inplace=True)
-    d.to_excel(writer, "End Divs", index=False)
+    system_entries.to_excel(writer, 'Loader', index=False)
+    remaining_divs.to_excel(writer, "End Divs", index=False)
     writer.save()
 
-    # TODO Error checking for when Div Quantity changes sign - Done
-    # TODO Don't allow divs to hit when New Quantity is zero - Done
-    # TODO Don't allow trades dated(settling?) before Ex-Date to make a dividend - Done
-    # TODO Cashflow output needs to be per Value Date, not per Trade - Done
-    # TODO Function to verify if a trade genuinely hits a dividend - Done
-    # TODO Completely empty cashflow gives KeyError - unlikely to be a serious problem
-    # TODO Cashflow and output with more details - Done
-    # TODO Outputs - Done
+if __name__ == '__main__':
+    main()
+
+# TODO Error checking for when Div Quantity changes sign - Done
+# TODO Don't allow divs to hit when New Quantity is zero - Done
+# TODO Don't allow trades dated(settling?) before Ex-Date to make a dividend - Done
+# TODO Cashflow output needs to be per Value Date, not per Trade - Done
+# TODO Function to verify if a trade genuinely hits a dividend - Done
+# TODO Completely empty cashflow gives KeyError - unlikely to be a serious problem
+# TODO Cashflow and output with more details - Done
+# TODO Outputs - Done

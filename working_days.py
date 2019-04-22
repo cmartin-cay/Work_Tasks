@@ -19,6 +19,7 @@ import sys
 CLIENT_LIST = ["Client 1", "Client 2", "Client 3"]
 CLIENT_DICT = dict()
 
+
 # Create the holiday calendar. In this case dates will be entered by hand, no rules will be used
 class CaymanHolidays(AbstractHolidayCalendar):
     rules = [
@@ -86,18 +87,17 @@ class EntryWindow(QDialog):
         main_layout = QVBoxLayout()
         self.form_layout = QFormLayout()
         for client in CLIENT_LIST:
-            self.form_layout.addRow(client, DatePicker())
+            date_picker = DatePicker()
+            CLIENT_DICT[client] = date_picker
+            self.form_layout.addRow(client, date_picker)
         main_layout.addLayout(self.form_layout)
         main_layout.addWidget(self.save_to_db_button_box)
         self.setLayout(main_layout)
 
     def save_to_db(self):
-        num_items = self.form_layout.count()
-        for index in range(0, num_items, 2):
-            name = self.form_layout.itemAt(index).widget().text()
-            cal_date = self.form_layout.itemAt(index+1).widget().date().toPython()
-            enter_delivery_date(name=name, cal_date=cal_date)
-
+        for key, val in CLIENT_DICT.items():
+            cal_date = val.date().toPython()
+            enter_delivery_date(name=key, cal_date=cal_date)
 
 
 class DatePicker(QDateEdit):
@@ -109,7 +109,6 @@ class DatePicker(QDateEdit):
         self.setCalendarWidget(Calendar())
 
 
-
 class Calendar(QCalendarWidget):
     def __init__(self):
         super().__init__()
@@ -117,13 +116,10 @@ class Calendar(QCalendarWidget):
         self.setFirstDayOfWeek(Qt.Monday)
         self.setVerticalHeaderFormat(self.NoVerticalHeader)
 
-# for client in CLIENT_LIST:
-#     date_picker = DatePicker()
-#     CLIENT_DICT[client] = date_picker
-# print(CLIENT_DICT)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     main_window = EntryWindow()
     main_window.show()
+
     sys.exit(app.exec_())

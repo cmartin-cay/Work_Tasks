@@ -92,7 +92,11 @@ class EntryWindow(QDialog):
         self.setLayout(main_layout)
 
     def save_to_db(self):
-        num items = self.form_layout.count()
+        num_items = self.form_layout.count()
+        for index in range(0, num_items, 2):
+            name = self.form_layout.itemAt(index).widget().text()
+            cal_date = self.form_layout.itemAt(index+1).widget().date().toPython()
+            enter_delivery_date(name=name, cal_date=cal_date)
 
 
 

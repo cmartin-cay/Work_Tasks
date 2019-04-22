@@ -9,8 +9,8 @@ verify_ssl = true
 pandas = "*"
 pyside2 = "*"
 sqlalchemy = "*"
-alembic = "*"
 altair = "*"
+sqlalchemy-migrate = "*"
 
 [requires]
 python_version = "3.7"

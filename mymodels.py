@@ -16,5 +16,6 @@ class Delivery(Base):
         return f"Client {self.name}: delivered on {self.calendar_date}"
 
 
-engine = create_engine("sqlite:///delivery_dates.db")
-Base.metadata.create_all(engine)
+if __name__ == '__main__':
+    engine = create_engine("sqlite:///delivery_dates.db")
+    Base.metadata.create_all(engine)

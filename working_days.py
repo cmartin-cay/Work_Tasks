@@ -74,6 +74,23 @@ def enter_delivery_date(name, cal_date):
     session.add(entry)
     session.commit()
 
+def enter_delivery_date_list(lst):
+    """
+    Create multiple entries in the Delivery database from a provided list
+    :param lst: List of 2 element tuples with Name and Calender date
+    :return: None
+    """
+    session = make_session()
+    for elem in lst:
+        name, cal_date = elem
+        current_month_start = date(year=cal_date.year, month=cal_date.month, day=1)
+        business_days = working_days(
+            start=current_month_start, end=cal_date, holiday_cal=chols
+        )
+        entry = Delivery(name=name, calendar_date=cal_date, working_day=business_days)
+        session.add(entry)
+    session.commit()
+
 
 class EntryWindow(QDialog):
     def __init__(self, parent=None):
@@ -86,6 +103,8 @@ class EntryWindow(QDialog):
         self.save_to_db_button_box.rejected.connect(self.close)
         main_layout = QVBoxLayout()
         self.form_layout = QFormLayout()
+        self.form_layout.setHorizontalSpacing(10)
+        self.form_layout.setVerticalSpacing(10)
         for client in CLIENT_LIST:
             date_picker = DatePicker()
             CLIENT_DICT[client] = date_picker
@@ -95,9 +114,11 @@ class EntryWindow(QDialog):
         self.setLayout(main_layout)
 
     def save_to_db(self):
+        entries = []
         for key, val in CLIENT_DICT.items():
             cal_date = val.date().toPython()
-            enter_delivery_date(name=key, cal_date=cal_date)
+            entries.append((key, cal_date))
+        enter_delivery_date_list(entries)
 
 
 class DatePicker(QDateEdit):

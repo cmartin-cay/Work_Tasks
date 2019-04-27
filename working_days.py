@@ -3,7 +3,7 @@ import pandas as pd
 from mymodels import Base, Delivery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from datetime import date
+from datetime import date, timedelta
 from PySide2.QtCore import QDate, Qt
 from PySide2.QtWidgets import (
     QCalendarWidget,
@@ -13,6 +13,7 @@ from PySide2.QtWidgets import (
     QFormLayout,
     QVBoxLayout,
     QDialogButtonBox,
+    QMessageBox
 )
 import sys
 
@@ -58,6 +59,13 @@ def make_session():
     return session
 
 
+def conflicting_month(year, month, name, session):
+    month_start = date(year=year, month=month, day=1)
+    month_end = date(year=year, month=month + 1, day=1) - timedelta(days=1)
+    results = session.query(Delivery).filter(Delivery.calendar_date >= month_start, Delivery.calendar_date <= month_end, Delivery.name == name).first()
+    if results:
+        return True
+
 def enter_delivery_date(name, cal_date):
     """
     Create an entry in the Delivery database
@@ -65,14 +73,15 @@ def enter_delivery_date(name, cal_date):
     :param cal_date: DateTime
     :return: None
     """
+    session = make_session()
     current_month_start = date(year=cal_date.year, month=cal_date.month, day=1)
     business_days = working_days(
         start=current_month_start, end=cal_date, holiday_cal=chols
     )
-    session = make_session()
     entry = Delivery(name=name, calendar_date=cal_date, working_day=business_days)
     session.add(entry)
     session.commit()
+
 
 def enter_delivery_date_list(lst):
     """
@@ -83,6 +92,15 @@ def enter_delivery_date_list(lst):
     session = make_session()
     for elem in lst:
         name, cal_date = elem
+        existing = conflicting_month(year=cal_date.year, month=cal_date.month, name=name, session=session)
+        if existing:
+            msg_box = QMessageBox()
+            msg_box.setText("Entry Error")
+            msg_box.setInformativeText(f"The entry for {name} and {cal_date:%B} {cal_date.year} already exists")
+            msg_box.exec_()
+            # Return statement breaks out of both inner and outer loop. This means an entry will only be made
+            # if all entries are valid
+            return
         current_month_start = date(year=cal_date.year, month=cal_date.month, day=1)
         business_days = working_days(
             start=current_month_start, end=cal_date, holiday_cal=chols

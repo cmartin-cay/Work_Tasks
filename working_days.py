@@ -1,5 +1,6 @@
 from pandas.tseries.holiday import AbstractHolidayCalendar, Holiday
 import pandas as pd
+import altair as alt
 from mymodels import Base, Delivery
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -142,14 +143,23 @@ def get_delivery_dates(start, end):
     return delivery_days
 
 
-days = get_delivery_dates(date(2018, 12, 1), date(2019, 4, 30))
-
-
 def delivery_dates_to_pandas(results):
-    df = pd.read_sql(days.statement, days.session.bind).drop(
-        ["id", "calendar_date"], axis=1
-    )
+    df = pd.read_sql(
+        results.statement, results.session.bind, parse_dates=["calendar_date"]
+    ).drop(["id"], axis=1)
     return df
+
+
+def graph_delivery_dates(df):
+    source = df
+    alt.Chart(source).mark_line(point=True).encode(
+        x="yearmonth(calendar_date):N", y="working_day:Q", color="name:N"
+    ).save("chart.html")
+
+
+# days = get_delivery_dates(date(2018,12,1), date(2019,4,30))
+# df = delivery_dates_to_pandas(days)
+# graph_delivery_dates(df=df)
 
 
 class EntryWindow(QWidget):

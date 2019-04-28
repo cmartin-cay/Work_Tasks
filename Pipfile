@@ -11,6 +11,7 @@ pyside2 = "*"
 sqlalchemy = "*"
 altair = "*"
 sqlalchemy-migrate = "*"
+selenium = "*"
 
 [requires]
 python_version = "3.7"

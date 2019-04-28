@@ -61,10 +61,15 @@ def make_session():
 
 def conflicting_month(year, month, name, session):
     month_start = date(year=year, month=month, day=1)
-    month_end = date(year=year, month=month + 1, day=1) - timedelta(days=1)
-    results = session.query(Delivery).filter(Delivery.calendar_date >= month_start, Delivery.calendar_date <= month_end, Delivery.name == name).first()
+    if month == 12:
+        month_end = month_start.replace(year=year + 1, month=(month + 1) % 12) - timedelta(days=1)
+    else:
+        month_end = month_start.replace(month=month + 1) - timedelta(days=1)
+    results = session.query(Delivery).filter(Delivery.calendar_date >= month_start, Delivery.calendar_date <= month_end,
+                                             Delivery.name == name).first()
     if results:
         return True
+
 
 def enter_delivery_date(name, cal_date):
     """

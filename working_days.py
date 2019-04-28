@@ -13,7 +13,8 @@ from PySide2.QtWidgets import (
     QFormLayout,
     QVBoxLayout,
     QDialogButtonBox,
-    QMessageBox
+    QMessageBox,
+    QWidget,
 )
 import sys
 
@@ -62,11 +63,20 @@ def make_session():
 def conflicting_month(year, month, name, session):
     month_start = date(year=year, month=month, day=1)
     if month == 12:
-        month_end = month_start.replace(year=year + 1, month=(month + 1) % 12) - timedelta(days=1)
+        month_end = month_start.replace(
+            year=year + 1, month=(month + 1) % 12
+        ) - timedelta(days=1)
     else:
         month_end = month_start.replace(month=month + 1) - timedelta(days=1)
-    results = session.query(Delivery).filter(Delivery.calendar_date >= month_start, Delivery.calendar_date <= month_end,
-                                             Delivery.name == name).first()
+    results = (
+        session.query(Delivery)
+        .filter(
+            Delivery.calendar_date >= month_start,
+            Delivery.calendar_date <= month_end,
+            Delivery.name == name,
+        )
+        .first()
+    )
     if results:
         return True
 
@@ -97,11 +107,15 @@ def enter_delivery_date_list(lst):
     session = make_session()
     for elem in lst:
         name, cal_date = elem
-        existing = conflicting_month(year=cal_date.year, month=cal_date.month, name=name, session=session)
+        existing = conflicting_month(
+            year=cal_date.year, month=cal_date.month, name=name, session=session
+        )
         if existing:
             msg_box = QMessageBox()
             msg_box.setText("Entry Error")
-            msg_box.setInformativeText(f"The entry for {name} and {cal_date:%B} {cal_date.year} already exists")
+            msg_box.setInformativeText(
+                f"The entry for {name} and {cal_date:%B} {cal_date.year} already exists"
+            )
             msg_box.exec_()
             # Return statement breaks out of both inner and outer loop. This means an entry will only be made
             # if all entries are valid
@@ -115,7 +129,30 @@ def enter_delivery_date_list(lst):
     session.commit()
 
 
-class EntryWindow(QDialog):
+def get_delivery_dates(start, end):
+    """
+    :param start: Start Date in Python date format
+    :param end: End Date in Python date format
+    :return: SQLAlchemy query
+    """
+    session = make_session()
+    delivery_days = session.query(Delivery).filter(
+        Delivery.calendar_date.between(start, end)
+    )
+    return delivery_days
+
+
+days = get_delivery_dates(date(2018, 12, 1), date(2019, 4, 30))
+
+
+def delivery_dates_to_pandas(results):
+    df = pd.read_sql(days.statement, days.session.bind).drop(
+        ["id", "calendar_date"], axis=1
+    )
+    return df
+
+
+class EntryWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Enter Delivery Dates")

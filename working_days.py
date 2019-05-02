@@ -209,12 +209,9 @@ class ChartOutputWindow(QWidget):
 
     def end_date_chosen(self, date):
         self.start_date.setMaximumDate(date)
-        day_num = date.day()
         date = date.addMonths(-24)
-        date = date.addDays(-day_num + 1)
+        date.setDate(date.year(), date.month(), 1)
         self.start_date.setDate(date)
-        # self.start_date.setDate(date.addMonths(-24))
-        # self.start_date.setDate(date.addDays(-day_num + 1))
 
     def delivery_dates(self):
         query = get_delivery_dates(start=self.start_date.date().toPython(), end=self.end_date.date().toPython())

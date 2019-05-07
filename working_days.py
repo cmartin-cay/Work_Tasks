@@ -71,12 +71,12 @@ def conflicting_month(year, month, name, session):
         month_end = month_start.replace(month=month + 1) - timedelta(days=1)
     results = (
         session.query(Delivery)
-        .filter(
+            .filter(
             Delivery.calendar_date >= month_start,
             Delivery.calendar_date <= month_end,
             Delivery.name == name,
-        )
-        .first()
+            )
+            .first()
     )
     if results:
         return True
@@ -205,6 +205,37 @@ class EntryWindow(QWidget):
             cal_date = val.date().toPython()
             entries.append((key, cal_date))
         enter_delivery_date_list(entries)
+
+class ChartOutputWindow(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Choose Reporting Period")
+        main_layout = QVBoxLayout()
+        self.form_layout = QFormLayout()
+        self.start_date = DatePicker()
+        self.end_date = DatePicker()
+        self.end_date.dateChanged.connect(self.end_date_chosen)
+        self.form_layout.addRow("End Date", self.end_date)
+        self.form_layout.addRow("Start Date", self.start_date)
+        self.get_from_db_button_box = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+        self.get_from_db_button_box.accepted.connect(self.delivery_dates)
+        self.get_from_db_button_box.rejected.connect(self.close)
+        main_layout.addLayout(self.form_layout)
+        main_layout.addWidget(self.get_from_db_button_box)
+        self.setLayout(main_layout)
+
+    def end_date_chosen(self, date):
+        self.start_date.setMaximumDate(date)
+        date = date.addMonths(-24)
+        date.setDate(date.year(), date.month(), 1)
+        self.start_date.setDate(date)
+
+    def delivery_dates(self):
+        query = get_delivery_dates(start=self.start_date.date().toPython(), end=self.end_date.date().toPython())
+        df = delivery_dates_to_pandas(query)
+        print(df)
 
 
 class DatePicker(QDateEdit):

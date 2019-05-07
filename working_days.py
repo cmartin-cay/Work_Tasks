@@ -152,14 +152,30 @@ def delivery_dates_to_pandas(results):
 
 def graph_delivery_dates(df):
     source = df
-    alt.Chart(source).mark_line(point=True).encode(
-        x="yearmonth(calendar_date):N", y="working_day:Q", color="name:N"
-    ).save("chart.html")
+    shapes = alt.Shape("name:N")
+
+    colors = alt.Color("name:N", legend=alt.Legend(title="Something"))
+
+    line = (
+        alt.Chart(source)
+        .mark_line()
+        .encode(
+            x="yearmonth(calendar_date):N",
+            y="working_day:Q",
+            color=alt.Color("name", legend=None),
+        )
+    )
+
+    points = line.mark_point(filled=True, size=80, opacity=1).encode(
+        color=colors, shape="name"
+    )
+
+    alt.layer(line, points).resolve_scale(color="independent", shape="independent").save("chart.png")
 
 
-# days = get_delivery_dates(date(2018,12,1), date(2019,4,30))
-# df = delivery_dates_to_pandas(days)
-# graph_delivery_dates(df=df)
+days = get_delivery_dates(date(2018, 1, 1), date(2019, 4, 30))
+df = delivery_dates_to_pandas(days)
+graph_delivery_dates(df=df)
 
 
 class EntryWindow(QWidget):
@@ -208,9 +224,9 @@ class Calendar(QCalendarWidget):
         self.setVerticalHeaderFormat(self.NoVerticalHeader)
 
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    main_window = EntryWindow()
-    main_window.show()
-
-    sys.exit(app.exec_())
+# if __name__ == "__main__":
+#     app = QApplication(sys.argv)
+#     main_window = EntryWindow()
+#     main_window.show()
+#
+#     sys.exit(app.exec_())

@@ -39,9 +39,6 @@ date = datetime(2019, 3, 31)
 #
 # df.to_sql("entries", con=engine, if_exists="append", index=False)
 session = make_session()
-# print(get_or_create_instrument(session=session, fund_name="Fund 1", date=date, anum=10000))
-entry = session.query(Entries).filter_by(fund_name="Fund 1").first()
-print(entry)
-entry.fund_name = "new"
-print(entry)
+print(get_or_create_instrument(session=session, fund_name="Fund 1", date=date, anum=10000))
+
 

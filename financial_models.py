@@ -7,11 +7,11 @@ Base = declarative_base()
 
 class Entries(Base):
     __tablename__ = "entries"
-    # __table_args__ = (UniqueConstraint('fund_name', 'date', 'anum', name="entry_check"),)
-    # id = Column(Integer, primary_key=True)
-    fund_name = Column(String(250), primary_key=True)
-    date = Column(Date, primary_key=True)
-    anum = Column(Integer, primary_key=True)
+    __table_args__ = (UniqueConstraint('fund_name', 'date', 'anum', name="entry_check"),)
+    id = Column(Integer, primary_key=True)
+    fund_name = Column(String(250))
+    date = Column(Date)
+    anum = Column(Integer)
     short_category = Column(String(256))
     long_category = Column(String(256))
     value = Column(Float)

@@ -236,14 +236,13 @@ class ChartOutputWindow(QWidget):
     def delivery_dates(self):
         query = get_delivery_dates(start=self.start_date.date().toPython(), end=self.end_date.date().toPython())
         df = delivery_dates_to_pandas(query)
-        print(df)
         graph_delivery_dates(df=df)
+        print(df)
 
 
 class DatePicker(QDateEdit):
     def __init__(self):
         super().__init__()
-        self.setDisplayFormat("dd/MM/yy")
         self.setDate(QDate.currentDate())
         self.setCalendarPopup(True)
         self.setCalendarWidget(Calendar())

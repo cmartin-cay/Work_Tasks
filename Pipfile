@@ -12,6 +12,9 @@ sqlalchemy = "*"
 altair = "*"
 sqlalchemy-migrate = "*"
 selenium = "*"
+jupyterlab = "*"
+requests = "*"
+dataclass-csv = "*"
 
 [requires]
 python_version = "3.7"

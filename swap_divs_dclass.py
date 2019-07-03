@@ -1,12 +1,13 @@
-from dataclasses import dataclass, field, replace
-from dateutil import parser
 import datetime
-from typing import Type
+from dataclasses import dataclass
+from typing import Type, List
+
 from dataclass_csv import DataclassReader, dateformat
 
 ME_DATE = datetime.datetime(2017, 9, 30)
-div_cashflow = []
-WHT_cashflow = []
+DIV_CASH = []
+WHT_CASH = []
+DIV_AMOUNT = []
 
 
 @dataclass
@@ -66,11 +67,12 @@ class Dividend:
         else:
             return False
 
-    def pay_div(self, trade: Type[Trade], temp_div_cash, temp_WHT_cash):
+    def pay_div(self, trade: Type[Trade], temp_div_cash, temp_WHT_cash, temp_div_amount):
         if self.valid_div(trade):
+            temp_div_amount.append(trade.quantity * self.amount)
             temp_div_cash.append(trade.quantity * -self.amount * (1 - self.WHT_rate))
             if self.is_WHT:
-                temp_WHT_cash.append(trade.quantity * self.amount * self.WHT_rate)
+                temp_WHT_cash.append(trade.quantity * -self.amount * self.WHT_rate)
             self.reduce_div(trade)
 
     def reduce_div(self, trade: Type[Trade]):
@@ -111,16 +113,29 @@ def read_trades(file_name):
                 trade_list.append(row)
         return trade_list
 
+def filter_trades(trades: List[Trade], divs: List[Dividend]) -> List[Trade]:
+    """Filter down the trades to include only those with an accrued dividend"""
+    # Step 1 - Create a set of valid dividend SEDOLs
+    SEDOL_with_div = set(div.SEDOL for div in divs)
+    print(SEDOL_with_div)
+    return [trade for trade in trades if trade.SEDOL in SEDOL_with_div]
 
 all_divs = read_divs("Swap Divs.csv")
 all_trades = read_trades("MSCO BHRI September.csv")
+valid_trades = filter_trades(all_trades, all_divs)
+
 
 trade: Type[Trade]
 div: Type[Dividend]
-for trade in all_trades:
+for idx, trade in enumerate(valid_trades):
+    temp_div_amount = []
     temp_div_cash = []
     temp_WHT_cash = []
     for div in all_divs:
-        div.pay_div(trade, temp_div_cash, temp_WHT_cash)
+        div.pay_div(trade, temp_div_cash, temp_WHT_cash, temp_div_amount)
     if temp_div_cash:
-        print(f"Temp Cash {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_div_cash)}")
+        print(f"Temp Cash Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_div_cash)}")
+    if temp_WHT_cash:
+        print(f"Temp WHT Cash Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_WHT_cash)}")
+    if temp_div_amount:
+        print(f"Temp Div Amount Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_div_amount)}")

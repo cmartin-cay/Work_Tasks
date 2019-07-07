@@ -49,11 +49,12 @@ class Dividend:
     # TODO Remember cut off date for WHT
     @property
     def is_WHT(self):
-        return (
-            True
-            if self.is_offshore and self.amount > 0 and self.div_ccy == "USD"
-            else False
-        )
+        return True if self.start_position > 0 else False
+        # return (
+        #     True
+        #     if self.is_offshore and self.amount > 0 and self.div_ccy == "USD"
+        #     else False
+        # )
 
     @property
     def WHT_rate(self):
@@ -61,22 +62,22 @@ class Dividend:
 
     def valid_div(self, trade: Type[Trade]):
         if (
-            self.SEDOL == trade.SEDOL
-            and trade.start_date < self.ex_date
-            and self.ex_date <= trade.end_date
+                self.SEDOL == trade.SEDOL
+                and trade.start_date < self.ex_date
+                and self.ex_date <= trade.end_date
         ):
             return True
         else:
             return False
 
     def pay_div(
-        self, trade: Type[Trade], temp_div_cash, temp_WHT_cash, temp_div_amount
+            self, trade: Type[Trade], temp_div_cash, temp_WHT_cash
     ):
         if self.valid_div(trade):
-            temp_div_amount.append(trade.quantity * self.amount)
-            temp_div_cash.append(trade.quantity * -self.amount * (1 - self.WHT_rate))
+            if not self.is_WHT:
+                temp_div_cash.append(trade.quantity * -self.amount)
             if self.is_WHT:
-                temp_WHT_cash.append(trade.quantity * -self.amount * self.WHT_rate)
+                temp_WHT_cash.append(trade.quantity * -self.amount)
             self.reduce_div(trade)
 
     def reduce_div(self, trade: Type[Trade]):
@@ -125,6 +126,7 @@ def filter_trades(trades: List[Trade], divs: List[Dividend]) -> List[Trade]:
     return [trade for trade in trades if trade.SEDOL in SEDOL_with_div]
 
 
+
 all_divs = read_divs("Swap Divs.csv")
 divs_dict = defaultdict(list)
 for div in all_divs:
@@ -134,19 +136,12 @@ valid_trades = filter_trades(all_trades, all_divs)
 
 trade: Type[Trade]
 div: Type[Dividend]
-for idx, trade in enumerate(valid_trades):
-    temp_div_amount = []
+for trade in valid_trades:
     temp_div_cash = []
     temp_WHT_cash = []
     # for div in all_divs:
     for div in divs_dict[trade.SEDOL]:
-        div.pay_div(trade, temp_div_cash, temp_WHT_cash, temp_div_amount)
-    # if temp_div_cash:
-    #     print(f"Temp Cash Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_div_cash)}")
-    # if temp_WHT_cash:
-    #     print(f"Temp WHT Cash Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_WHT_cash)}")
-    # if temp_div_amount:
-    #     print(f"Temp Div Amount Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_div_amount)}")
+        div.pay_div(trade, temp_div_cash, temp_WHT_cash)
     if temp_div_cash:
         DIV_CASH.append(
             [
@@ -157,8 +152,20 @@ for idx, trade in enumerate(valid_trades):
                 sum(temp_div_cash),
             ]
         )
+    if temp_WHT_cash:
+            WHT_CASH.append(
+            [
+                trade.stock_description,
+                trade.value_date,
+                trade.swap_settlement_currency,
+                div.fund,
+                sum(temp_WHT_cash),
+            ]
+        )
 
-def create_pnl_entries(cashflow_list, WHT=False):
+
+
+def create_pnl_entries(cashflow_list):
     pnl_entries = pd.DataFrame(cashflow_list, columns=["Description", "Value Date", "Currency", "Fund", "Amount"])
     # Divs were calculated based on cash, so amount needs to be flipped
     pnl_entries["Amount"] *= -1
@@ -169,12 +176,13 @@ def create_pnl_entries(cashflow_list, WHT=False):
     pnl_entries.loc[pnl_entries["Amount"] > 0, "Account"] = 52502
     return pnl_entries
 
+
 def create_cash_entries(df, WHT=False):
     if not WHT:
-       cash_entries = df.copy()
-       cash_entries["Amount"] *= -1
-       cash_entries["Account"] = 11504
-       return cash_entries
+        cash_entries = df.copy()
+        cash_entries["Amount"] *= -1
+        cash_entries["Account"] = 11504
+        return cash_entries
     else:
         cash_entries = df.copy()
         cash_entries["Amount"] *= (-1 + 0.3)
@@ -182,8 +190,9 @@ def create_cash_entries(df, WHT=False):
         wht_entries = df.copy()
         wht_entries["Amount"] *= -0.3
         wht_entries["Account"] = 99999
-        return cash_entries.append(wht_entries, ignore_index=True)
+        return cash_entries.append(wht_entries)
 
-initial = create_pnl_entries(DIV_CASH)
-second = create_cash_entries(initial, WHT=True)
-print(second)
+first = create_pnl_entries(WHT_CASH)
+second = create_cash_entries(first, WHT=True)
+combined = first.append(second)
+print()

@@ -49,12 +49,12 @@ class Dividend:
     # TODO Remember cut off date for WHT
     @property
     def is_WHT(self):
-        return True if self.start_position > 0 else False
-        # return (
-        #     True
-        #     if self.is_offshore and self.amount > 0 and self.div_ccy == "USD"
-        #     else False
-        # )
+        # return True if self.start_position > 0 else False
+        return (
+            True
+            if self.is_offshore and self.amount > 0 and self.div_ccy == "USD"
+            else False
+        )
 
     @property
     def WHT_rate(self):

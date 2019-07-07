@@ -175,6 +175,15 @@ def create_cash_entries(df, WHT=False):
        cash_entries["Amount"] *= -1
        cash_entries["Account"] = 11504
        return cash_entries
+    else:
+        cash_entries = df.copy()
+        cash_entries["Amount"] *= (-1 + 0.3)
+        cash_entries["Account"] = 11504
+        wht_entries = df.copy()
+        wht_entries["Amount"] *= -0.3
+        wht_entries["Account"] = 99999
+        return cash_entries.append(wht_entries, ignore_index=True)
 
 initial = create_pnl_entries(DIV_CASH)
-second = create_cash_entries(initial)
+second = create_cash_entries(initial, WHT=True)
+print(second)

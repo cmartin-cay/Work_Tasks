@@ -1,6 +1,8 @@
 import datetime
 from dataclasses import dataclass
 from typing import Type, List
+from collections import defaultdict
+import pandas as pd
 
 from dataclass_csv import DataclassReader, dateformat
 
@@ -59,15 +61,17 @@ class Dividend:
 
     def valid_div(self, trade: Type[Trade]):
         if (
-                self.SEDOL == trade.SEDOL
-                and trade.start_date < self.ex_date
-                and self.ex_date <= trade.end_date
+            self.SEDOL == trade.SEDOL
+            and trade.start_date < self.ex_date
+            and self.ex_date <= trade.end_date
         ):
             return True
         else:
             return False
 
-    def pay_div(self, trade: Type[Trade], temp_div_cash, temp_WHT_cash, temp_div_amount):
+    def pay_div(
+        self, trade: Type[Trade], temp_div_cash, temp_WHT_cash, temp_div_amount
+    ):
         if self.valid_div(trade):
             temp_div_amount.append(trade.quantity * self.amount)
             temp_div_cash.append(trade.quantity * -self.amount * (1 - self.WHT_rate))
@@ -113,17 +117,20 @@ def read_trades(file_name):
                 trade_list.append(row)
         return trade_list
 
+
 def filter_trades(trades: List[Trade], divs: List[Dividend]) -> List[Trade]:
     """Filter down the trades to include only those with an accrued dividend"""
     # Step 1 - Create a set of valid dividend SEDOLs
     SEDOL_with_div = set(div.SEDOL for div in divs)
-    print(SEDOL_with_div)
     return [trade for trade in trades if trade.SEDOL in SEDOL_with_div]
 
+
 all_divs = read_divs("Swap Divs.csv")
+divs_dict = defaultdict(list)
+for div in all_divs:
+    divs_dict[div.SEDOL].append(div)
 all_trades = read_trades("MSCO BHRI September.csv")
 valid_trades = filter_trades(all_trades, all_divs)
-
 
 trade: Type[Trade]
 div: Type[Dividend]
@@ -131,11 +138,22 @@ for idx, trade in enumerate(valid_trades):
     temp_div_amount = []
     temp_div_cash = []
     temp_WHT_cash = []
-    for div in all_divs:
+    # for div in all_divs:
+    for div in divs_dict[trade.SEDOL]:
         div.pay_div(trade, temp_div_cash, temp_WHT_cash, temp_div_amount)
+    # if temp_div_cash:
+    #     print(f"Temp Cash Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_div_cash)}")
+    # if temp_WHT_cash:
+    #     print(f"Temp WHT Cash Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_WHT_cash)}")
+    # if temp_div_amount:
+    #     print(f"Temp Div Amount Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_div_amount)}")
     if temp_div_cash:
-        print(f"Temp Cash Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_div_cash)}")
-    if temp_WHT_cash:
-        print(f"Temp WHT Cash Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_WHT_cash)}")
-    if temp_div_amount:
-        print(f"Temp Div Amount Entry {idx} {trade.stock_description} {trade.swap_settlement_currency} {sum(temp_div_amount)}")
+        DIV_CASH.append(
+            [
+                trade.stock_description,
+                trade.value_date,
+                trade.swap_settlement_currency,
+                div.fund,
+                sum(temp_div_cash),
+            ]
+        )

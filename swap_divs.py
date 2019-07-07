@@ -1,18 +1,18 @@
 import pandas as pd
 import numpy as np
-from datetime import date
-from tkinter.filedialog import askopenfilename
-from tkinter import Tk
+from datetime import datetime
+# from tkinter.filedialog import askopenfilename
+# from tkinter import Tk
 
-DEV = False
+DEV = True
 if DEV:
-    div_file, trade_file = ("Citco Divs.xlsx", "MSCO.csv")
+    div_file, trade_file = ("BHRI Swap Divs September.xlsx", "MSCO BHRI September.csv")
 else:
     div_file, trade_file = (
         askopenfilename(title="Open the Citco Dividends File"),
         askopenfilename(title="Open the MSCO trade file"),
     )
-ME_DATE = date(2019, 6, 30)
+ME_DATE = datetime(2017, 9, 30)
 cashflow = []
 error_log = []
 

@@ -17,7 +17,7 @@ class Entries(Base):
     value = Column(Float)
 
     def __repr__(self):
-        return f"Client {self.fund_name}, Anum {self.anum}, Value {self.value} "
+        return f"Client {self.fund_name}, Date {self.date}, Anum {self.anum}, Value {self.value}"
 
 
 if __name__ == '__main__':

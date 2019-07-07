@@ -157,3 +157,24 @@ for idx, trade in enumerate(valid_trades):
                 sum(temp_div_cash),
             ]
         )
+
+def create_pnl_entries(cashflow_list, WHT=False):
+    pnl_entries = pd.DataFrame(cashflow_list, columns=["Description", "Value Date", "Currency", "Fund", "Amount"])
+    # Divs were calculated based on cash, so amount needs to be flipped
+    pnl_entries["Amount"] *= -1
+    pnl_entries = pnl_entries.groupby(["Fund", "Description", "Value Date", "Currency"]).sum().reset_index()
+    pnl_entries["Description"] = pnl_entries["Description"] + " Swap Div"
+    # Set the cash entries to be Income by default then change for Expense
+    pnl_entries["Account"] = 42003
+    pnl_entries.loc[pnl_entries["Amount"] > 0, "Account"] = 52502
+    return pnl_entries
+
+def create_cash_entries(df, WHT=False):
+    if not WHT:
+       cash_entries = df.copy()
+       cash_entries["Amount"] *= -1
+       cash_entries["Account"] = 11504
+       return cash_entries
+
+initial = create_pnl_entries(DIV_CASH)
+second = create_cash_entries(initial)

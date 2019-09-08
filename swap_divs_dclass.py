@@ -60,7 +60,7 @@ class Dividend:
     def WHT_rate(self):
         return 0.3 if self.is_WHT else 0
 
-    def valid_div(self, trade: Type[Trade]):
+    def valid_div(self, trade: Trade):
         if (
                 self.SEDOL == trade.SEDOL
                 and trade.start_date < self.ex_date
@@ -71,7 +71,7 @@ class Dividend:
             return False
 
     def pay_div(
-            self, trade: Type[Trade], temp_div_cash, temp_WHT_cash
+            self, trade: Trade, temp_div_cash, temp_WHT_cash
     ):
         if self.valid_div(trade):
             if not self.is_WHT:
@@ -80,7 +80,7 @@ class Dividend:
                 temp_WHT_cash.append(trade.quantity * -self.amount)
             self.reduce_div(trade)
 
-    def reduce_div(self, trade: Type[Trade]):
+    def reduce_div(self, trade: Trade):
         self.new_position += trade.quantity
 
 
@@ -126,7 +126,6 @@ def filter_trades(trades: List[Trade], divs: List[Dividend]) -> List[Trade]:
     return [trade for trade in trades if trade.SEDOL in SEDOL_with_div]
 
 
-
 all_divs = read_divs("Swap Divs.csv")
 divs_dict = defaultdict(list)
 for div in all_divs:
@@ -134,8 +133,8 @@ for div in all_divs:
 all_trades = read_trades("MSCO BHRI September.csv")
 valid_trades = filter_trades(all_trades, all_divs)
 
-trade: Type[Trade]
-div: Type[Dividend]
+trade: Trade
+div: Dividend
 for trade in valid_trades:
     temp_div_cash = []
     temp_WHT_cash = []
@@ -153,7 +152,7 @@ for trade in valid_trades:
             ]
         )
     if temp_WHT_cash:
-            WHT_CASH.append(
+        WHT_CASH.append(
             [
                 trade.stock_description,
                 trade.value_date,
@@ -162,7 +161,6 @@ for trade in valid_trades:
                 sum(temp_WHT_cash),
             ]
         )
-
 
 
 def create_pnl_entries(cashflow_list):
@@ -191,6 +189,7 @@ def create_cash_entries(df, WHT=False):
         wht_entries["Amount"] *= -0.3
         wht_entries["Account"] = 99999
         return cash_entries.append(wht_entries)
+
 
 first = create_pnl_entries(WHT_CASH)
 second = create_cash_entries(first, WHT=True)

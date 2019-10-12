@@ -18,7 +18,7 @@ def open_gtrades():
         "TRADE DATE",
         "ORDLG_TY_DESC",
     ]
-    res = pd.read_excel(location, usecols=cols)
+    res = pd.read_excel(location, usecols=cols, parse_dates=["TRADE DATE"])
     return res
 
 

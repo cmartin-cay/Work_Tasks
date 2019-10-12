@@ -171,9 +171,11 @@ def create_loader_df():
     )
     return loader
 
+
 def create_load_file(loader, trades):
     loader_df = pd.concat([loader, trades], join="outer", axis=0, sort=False)
     loader_df.to_csv("gtl.csv", date_format="%Y%m%d", index=False)
+
 
 def main():
     g_trades = open_gtrades()
@@ -182,5 +184,6 @@ def main():
     trades = fill_information(merged)
     loader = create_loader_df()
     create_load_file(loader, trades)
+
 
 main()
